@@ -45,7 +45,7 @@
   </style>
 </head>
 <body>
-  <h2>💬 Простой WebSocket Мессенджер</h2>
+  <h2>Простой WebSocket Мессенджер</h2>
 
   <div>
     <label>Имя: </label>
@@ -61,7 +61,7 @@
     const socket = new WebSocket("wss://messenger-server-l789.onrender.com");
 
     socket.addEventListener("open", () => {
-      console.log("✅ Соединение установлено");
+      console.log("Соединение установлено");
     });
 
     socket.addEventListener("message", async (event) => {

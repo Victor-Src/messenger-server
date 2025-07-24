@@ -3,13 +3,13 @@ const WebSocket = require('ws');
 const PORT = process.env.PORT || 3000;
 const server = new WebSocket.Server({ port: PORT });
 
-console.log(`✅ WebSocket server is running on ws://localhost:${PORT}`);
+console.log(`WebSocket server is running on ws://localhost:${PORT}`);
 
 server.on('connection', (socket) => {
-  console.log('🔌 New client connected');
+  console.log('New client connected');
 
   socket.on('message', (message) => {
-    console.log('📨 Received:', message);
+    console.log('Received:', message);
     
     // Отправляем сообщение всем клиентам, кроме отправителя
     server.clients.forEach((client) => {
@@ -20,6 +20,6 @@ server.on('connection', (socket) => {
   });
 
   socket.on('close', () => {
-    console.log('❌ Client disconnected');
+    console.log('Client disconnected');
   });
 });
