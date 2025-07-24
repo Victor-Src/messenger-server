@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Messenger Client</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+
+    #chat {
+      background: #fff;
+      border: 1px solid #ccc;
+      height: 300px;
+      overflow-y: auto;
+      padding: 10px;
+      margin-bottom: 10px;
+      list-style: none;
+    }
+
+    #chat li {
+      margin-bottom: 5px;
+    }
+
+    input, button {
+      font-size: 16px;
+      padding: 5px;
+      margin-top: 5px;
+    }
+
+    #username {
+      width: 100px;
+    }
+
+    #msgInput {
+      width: 60%;
+    }
+
+    .self {
+      color: green;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>💬 Простой WebSocket Мессенджер</h2>
+
+  <div>
+    <label>Имя: </label>
+    <input type="text" id="username" placeholder="Имя (обязательно)" />
+  </div>
+
+  <ul id="chat"></ul>
+
+  <input id="msgInput" type="text" placeholder="Введите сообщение..." />
+  <button onclick="sendMessage()">Отправить</button>
+
+  <script>
+    const socket = new WebSocket("wss://messenger-server-l789.onrender.com");
+
+    socket.addEventListener("open", () => {
+      console.log("✅ Соединение установлено");
+    });
+
+    socket.addEventListener("message", async (event) => {
+      const chat = document.getElementById("chat");
+      const li = document.createElement("li");
+
+      const text = typeof event.data === "string"
+        ? event.data
+        : await event.data.text();
+
+      li.textContent = text;
+      chat.appendChild(li);
+    });
+
+    function sendMessage() {
+      const input = document.getElementById("msgInput");
+      const username = document.getElementById("username").value.trim();
+      const message = input.value.trim();
+
+      if (!username) {
+        alert("Пожалуйста, введите имя.");
+        return;
+      }
+
+      if (message === "") return;
+
+      const fullMessage = `${username}: ${message}`;
+      socket.send(fullMessage);
+
+      // Добавить своё сообщение в список
+      const chat = document.getElementById("chat");
+      const li = document.createElement("li");
+      li.textContent = fullMessage;
+      li.classList.add("self");
+      chat.appendChild(li);
+
+      input.value = "";
+    }
+  </script>
+</body>
+</html>
