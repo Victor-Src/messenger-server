@@ -1,71 +1,61 @@
-const WebSocket = require('ws');
+const WebSocket = require("ws");
 
 const PORT = process.env.PORT || 3000;
 const server = new WebSocket.Server({ port: PORT });
 
-console.log(`✅ WebSocket server is running on port ${PORT}`);
+console.log(`✅ WebSocket сервер работает на порту ${PORT}`);
 
 const clients = new Map(); // username -> socket
 
 function broadcastOnlineUsers() {
-  const userList = Array.from(clients.keys());
-
-  const payload = JSON.stringify({
-    type: 'online-users',
-    users: userList
+  const users = Array.from(clients.keys());
+  const message = JSON.stringify({
+    type: "online-users",
+    users,
   });
 
-  for (const socket of clients.values()) {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(payload);
+  clients.forEach((sock) => {
+    if (sock.readyState === WebSocket.OPEN) {
+      sock.send(message);
     }
-  }
+  });
 }
 
-server.on('connection', (socket) => {
-  let currentUsername = null;
+server.on("connection", (socket) => {
+  let currentUser = null;
 
-  socket.on('message', (data) => {
-    let payload;
+  socket.on("message", (data) => {
+    let parsed;
     try {
-      payload = JSON.parse(data);
-    } catch (e) {
-      socket.send('❌ Invalid message format');
-      return;
+      parsed = JSON.parse(data);
+    } catch {
+      return socket.send("❌ Неверный формат");
     }
 
-    const { type, from, to, message } = payload;
-
-    if (type === 'register') {
-      if (!from) {
-        socket.send('❌ Missing username');
-        return;
-      }
-
-      currentUsername = from;
-      clients.set(from, socket);
+    if (parsed.type === "register") {
+      if (!parsed.from) return;
+      currentUser = parsed.from;
+      clients.set(currentUser, socket);
       broadcastOnlineUsers();
       return;
     }
 
-    if (type === 'message') {
-      if (!from || !to || !message) {
-        socket.send('❌ Missing message fields');
-        return;
-      }
+    if (parsed.type === "message") {
+      const { from, to, message } = parsed;
+      if (!from || !to || !message) return;
 
-      const recipientSocket = clients.get(to);
-      if (recipientSocket && recipientSocket.readyState === WebSocket.OPEN) {
-        recipientSocket.send(`${from} → вы: ${message}`);
+      const toSocket = clients.get(to);
+      if (toSocket && toSocket.readyState === WebSocket.OPEN) {
+        toSocket.send(`${from} → вы: ${message}`);
       } else {
         socket.send(`⚠️ Пользователь "${to}" не в сети`);
       }
     }
   });
 
-  socket.on('close', () => {
-    if (currentUsername) {
-      clients.delete(currentUsername);
+  socket.on("close", () => {
+    if (currentUser) {
+      clients.delete(currentUser);
       broadcastOnlineUsers();
     }
   });
