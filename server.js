@@ -1,62 +1,61 @@
-const WebSocket = require("ws");
+const WebSocket = require('ws');
+const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 3000;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false // важно для Render, если нужно
+  }
+});
+
 const server = new WebSocket.Server({ port: PORT });
+console.log(`✅ WebSocket server running on ws://localhost:${PORT}`);
 
-console.log(`✅ WebSocket сервер работает на порту ${PORT}`);
+// Инициализация таблицы сообщений
+(async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(50),
+      message TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+})();
 
-const clients = new Map(); // username -> socket
+server.on('connection', (socket) => {
+  console.log('🔌 New client connected');
 
-function broadcastOnlineUsers() {
-  const users = Array.from(clients.keys());
-  const message = JSON.stringify({
-    type: "online-users",
-    users,
-  });
+  // При подключении отправим все прошлые сообщения из базы
+  (async () => {
+    const res = await pool.query('SELECT username, message, created_at FROM messages ORDER BY created_at ASC');
+    res.rows.forEach(row => {
+      socket.send(`${row.username}: ${row.message}`);
+    });
+  })();
 
-  clients.forEach((sock) => {
-    if (sock.readyState === WebSocket.OPEN) {
-      sock.send(message);
-    }
-  });
-}
+  socket.on('message', async (msg) => {
+    console.log('📨 Received:', msg);
 
-server.on("connection", (socket) => {
-  let currentUser = null;
+    // Сохраняем сообщение в базу
+    const [username, ...messageParts] = msg.split(': ');
+    const message = messageParts.join(': ');
 
-  socket.on("message", (data) => {
-    let parsed;
-    try {
-      parsed = JSON.parse(data);
-    } catch {
-      return socket.send("❌ Неверный формат");
-    }
+    await pool.query(
+      'INSERT INTO messages (username, message) VALUES ($1, $2)',
+      [username, message]
+    );
 
-    if (parsed.type === "register") {
-      if (!parsed.from) return;
-      currentUser = parsed.from;
-      clients.set(currentUser, socket);
-      broadcastOnlineUsers();
-      return;
-    }
-
-    if (parsed.type === "message") {
-      const { from, to, message } = parsed;
-      if (!from || !to || !message) return;
-
-      const toSocket = clients.get(to);
-      if (toSocket && toSocket.readyState === WebSocket.OPEN) {
-        toSocket.send(`${from} → вы: ${message}`);
-      } else {
-        socket.send(`⚠️ Пользователь "${to}" не в сети`);
+    // Рассылаем всем клиентам, кроме отправителя
+    server.clients.forEach(client => {
+      if (client !== socket && client.readyState === WebSocket.OPEN) {
+        client.send(msg);
       }
-    }
+    });
   });
 
-  socket.on("close", () => {
-    if (currentUser) {
-      clients.delete(currentUser);
-      broadcastOnlineUsers();
-    }
+  socket.on('close', () => {
+    console.log('❌ Client disconnected');
   });
 });
