@@ -8,6 +8,17 @@
   },
   "dependencies": {
     "pg": "^8.16.3",
-    "ws": "^8.13.0"
-  }
+    "ws": "^8.18.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Victor-Src/messenger-server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Victor-Src/messenger-server/issues"
+  },
+  "homepage": "https://github.com/Victor-Src/messenger-server#readme"
 }

@@ -59,25 +59,29 @@
 <body>
   <h2>Приватный Чат с Онлайн-Юзерами</h2>
 
-  <div>
+  <!-- 🔹 Блок входа -->
+  <div id="loginDiv">
     <label>Ваше имя: </label>
     <input type="text" id="username" placeholder="ваше имя" />
-    <button onclick="register()">Подключиться</button>
+    <button onclick="register()">Войти</button>
   </div>
 
-  <div id="status">🕓 Не подключено</div>
+  <!-- 🔹 Блок чата -->
+  <div id="chatDiv" style="display: none;">
+    <div id="status">🕓 Не подключено</div>
 
-  <div id="users"><strong>Онлайн:</strong> <span id="userList">никого :(</span></div>
+    <div id="users"><strong>Онлайн:</strong> <span id="userList">никого :(</span></div>
 
-  <div>
-    <label>Кому: </label>
-    <input type="text" id="recipient" placeholder="получатель" />
+    <div>
+      <label>Кому: </label>
+      <input type="text" id="recipient" placeholder="получатель" />
+    </div>
+
+    <ul id="chat"></ul>
+
+    <input id="msgInput" type="text" placeholder="Сообщение..." />
+    <button onclick="sendMessage()">Отправить</button>
   </div>
-
-  <ul id="chat"></ul>
-
-  <input id="msgInput" type="text" placeholder="Сообщение..." />
-  <button onclick="sendMessage()">Отправить</button>
 
   <script>
     const socket = new WebSocket("wss://messenger-server-l789.onrender.com");
@@ -126,7 +130,12 @@
       currentUser = username;
       socket.send(JSON.stringify({ type: "register", from: username }));
       isRegistered = true;
+
       statusEl.textContent = `🟢 Вы вошли как "${username}"`;
+
+      // Показываем чат, скрываем форму входа
+      document.getElementById("loginDiv").style.display = "none";
+      document.getElementById("chatDiv").style.display = "block";
     }
 
     function sendMessage() {
@@ -135,7 +144,7 @@
       const message = document.getElementById("msgInput").value.trim();
 
       if (!isRegistered) {
-        alert("Сначала нажмите «Подключиться»");
+        alert("Сначала нажмите «Войти»");
         return;
       }
 
