@@ -4,15 +4,15 @@ const { Pool } = require('pg');
 const PORT = process.env.PORT || 3000;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    rejectUnauthorized: false // важно для Render, если нужно
+  }
 });
 
 const server = new WebSocket.Server({ port: PORT });
 console.log(`✅ WebSocket server running on ws://localhost:${PORT}`);
 
-const onlineUsers = new Map();
-
-// Создание таблицы при запуске
+// Инициализация таблицы сообщений
 (async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -24,73 +24,38 @@ const onlineUsers = new Map();
   `);
 })();
 
-function broadcastToAll(obj) {
-  const data = JSON.stringify(obj);
-  server.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(data);
-    }
-  });
-}
-
 server.on('connection', (socket) => {
-  let currentUsername = null;
-
   console.log('🔌 New client connected');
 
-  // Обработка входящих сообщений
-  socket.on('message', async (raw) => {
-    let data;
+  // При подключении отправим все прошлые сообщения из базы
+  (async () => {
+    const res = await pool.query('SELECT username, message, created_at FROM messages ORDER BY created_at ASC');
+    res.rows.forEach(row => {
+      socket.send(`${row.username}: ${row.message}`);
+    });
+  })();
 
-    try {
-      data = JSON.parse(raw);
-    } catch (err) {
-      return;
-    }
+  socket.on('message', async (msg) => {
+    console.log('📨 Received:', msg);
 
-    if (data.type === 'register') {
-      currentUsername = data.from;
-      onlineUsers.set(socket, currentUsername);
+    // Сохраняем сообщение в базу
+    const [username, ...messageParts] = msg.split(': ');
+    const message = messageParts.join(': ');
 
-      // Отправка истории сообщений
-      const res = await pool.query(`
-        SELECT username, message FROM messages ORDER BY created_at ASC LIMIT 50
-      `);
-      socket.send(JSON.stringify({
-        type: 'history',
-        messages: res.rows
-      }));
+    await pool.query(
+      'INSERT INTO messages (username, message) VALUES ($1, $2)',
+      [username, message]
+    );
 
-      // Обновить список онлайн
-      broadcastToAll({
-        type: 'online-users',
-        users: Array.from(onlineUsers.values())
-      });
-    }
-
-    if (data.type === 'message') {
-      const { from, to, message } = data;
-      const formatted = `${from} → ${to}: ${message}`;
-
-      // Сохраняем в БД
-      await pool.query(
-        'INSERT INTO messages (username, message) VALUES ($1, $2)',
-        [from, formatted]
-      );
-
-      // Отправить всем
-      broadcastToAll({ type: 'message', text: formatted });
-    }
+    // Рассылаем всем клиентам, кроме отправителя
+    server.clients.forEach(client => {
+      if (client !== socket && client.readyState === WebSocket.OPEN) {
+        client.send(msg);
+      }
+    });
   });
 
   socket.on('close', () => {
-    if (currentUsername) {
-      onlineUsers.delete(socket);
-
-      broadcastToAll({
-        type: 'online-users',
-        users: Array.from(onlineUsers.values())
-      });
-    }
+    console.log('❌ Client disconnected');
   });
 });
