@@ -2,84 +2,124 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Приватный Чат</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #f0f0f0;
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #e0eafc, #cfdef3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-top: 0;
+      color: #333;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      transition: background-color 0.3s;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
     }
 
     #chat {
-      background: #fff;
-      border: 1px solid #ccc;
-      height: 300px;
+      height: 200px;
       overflow-y: auto;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 8px;
       padding: 10px;
-      margin-bottom: 10px;
       list-style: none;
     }
 
     #chat li {
-      margin-bottom: 5px;
-    }
-
-    #users {
-      margin-top: 10px;
-      padding: 10px;
-      background: #e0ffe0;
-      border: 1px solid #9ccc9c;
+      margin-bottom: 6px;
     }
 
     .self {
-      color: green;
       font-weight: bold;
-    }
-
-    input, button {
-      font-size: 16px;
-      padding: 5px;
-      margin-top: 5px;
-    }
-
-    #username, #recipient {
-      width: 100px;
-    }
-
-    #msgInput {
-      width: 60%;
+      color: green;
     }
 
     #status {
-      color: blue;
-      margin-bottom: 10px;
+      color: #007bff;
+      font-size: 14px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #users {
+      background: #f0fff0;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 14px;
+      border: 1px solid #d0e0d0;
+    }
+
+    @media (max-width: 600px) {
+      .card {
+        padding: 20px;
+      }
+
+      input, button {
+        font-size: 14px;
+      }
     }
   </style>
 </head>
 <body>
-  <h2>Приватный Чат с Онлайн-Юзерами</h2>
-
-  <!-- 🔹 Блок входа -->
-  <div id="loginDiv">
-    <label>Ваше имя: </label>
-    <input type="text" id="username" placeholder="ваше имя" />
+  <div class="card" id="loginDiv">
+    <h2>Вход в чат</h2>
+    <input type="text" id="username" placeholder="Ваше имя" />
     <button onclick="register()">Войти</button>
   </div>
 
-  <!-- 🔹 Блок чата -->
-  <div id="chatDiv" style="display: none;">
+  <div class="card hidden" id="chatDiv">
+    <h2>Приватный Чат</h2>
     <div id="status">🕓 Не подключено</div>
-
     <div id="users"><strong>Онлайн:</strong> <span id="userList">никого :(</span></div>
 
-    <div>
-      <label>Кому: </label>
-      <input type="text" id="recipient" placeholder="получатель" />
-    </div>
-
+    <input type="text" id="recipient" placeholder="Кому (имя)" />
     <ul id="chat"></ul>
 
-    <input id="msgInput" type="text" placeholder="Сообщение..." />
+    <input id="msgInput" type="text" placeholder="Введите сообщение..." />
     <button onclick="sendMessage()">Отправить</button>
   </div>
 
@@ -111,7 +151,6 @@
           return;
         }
       } catch {
-        // not JSON
         text = event.data;
       }
 
@@ -133,9 +172,8 @@
 
       statusEl.textContent = `🟢 Вы вошли как "${username}"`;
 
-      // Показываем чат, скрываем форму входа
-      document.getElementById("loginDiv").style.display = "none";
-      document.getElementById("chatDiv").style.display = "block";
+      document.getElementById("loginDiv").classList.add("hidden");
+      document.getElementById("chatDiv").classList.remove("hidden");
     }
 
     function sendMessage() {
@@ -144,12 +182,12 @@
       const message = document.getElementById("msgInput").value.trim();
 
       if (!isRegistered) {
-        alert("Сначала нажмите «Войти»");
+        alert("Сначала войдите в чат");
         return;
       }
 
       if (!to || !message) {
-        alert("Введите получателя и сообщение");
+        alert("Введите имя получателя и сообщение");
         return;
       }
 

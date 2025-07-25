@@ -29,7 +29,7 @@ server.on("connection", (socket) => {
     try {
       parsed = JSON.parse(data);
     } catch {
-      return socket.send("❌ Неверный формат");
+      return socket.send("❌ Неверный формат сообщения");
     }
 
     if (parsed.type === "register") {
