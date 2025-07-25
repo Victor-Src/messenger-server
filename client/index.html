@@ -49,6 +49,11 @@
     #msgInput {
       width: 60%;
     }
+
+    #status {
+      color: blue;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -59,6 +64,8 @@
     <input type="text" id="username" placeholder="ваше имя" />
     <button onclick="register()">Подключиться</button>
   </div>
+
+  <div id="status">🕓 Не подключено</div>
 
   <div id="users"><strong>Онлайн:</strong> <span id="userList">никого :(</span></div>
 
@@ -74,9 +81,14 @@
 
   <script>
     const socket = new WebSocket("wss://messenger-server-l789.onrender.com");
+    let isRegistered = false;
+    let currentUser = "";
+
+    const statusEl = document.getElementById("status");
 
     socket.addEventListener("open", () => {
-      console.log("✅ Connected");
+      console.log("✅ Соединение установлено");
+      statusEl.textContent = "🟢 Подключено";
     });
 
     socket.addEventListener("message", async (event) => {
@@ -85,14 +97,18 @@
         text = typeof event.data === "string"
           ? event.data
           : await event.data.text();
+
         const parsed = JSON.parse(text);
 
         if (parsed.type === "online-users") {
-          document.getElementById("userList").textContent = parsed.users.join(", ") || "никого :(";
+          document.getElementById("userList").textContent = parsed.users.length
+            ? parsed.users.join(", ")
+            : "никого :(";
           return;
         }
       } catch {
         // not JSON
+        text = event.data;
       }
 
       const li = document.createElement("li");
@@ -103,20 +119,28 @@
     function register() {
       const username = document.getElementById("username").value.trim();
       if (!username) {
-        alert("Введите имя");
+        alert("Введите ваше имя");
         return;
       }
 
+      currentUser = username;
       socket.send(JSON.stringify({ type: "register", from: username }));
+      isRegistered = true;
+      statusEl.textContent = `🟢 Вы вошли как "${username}"`;
     }
 
     function sendMessage() {
-      const from = document.getElementById("username").value.trim();
+      const from = currentUser;
       const to = document.getElementById("recipient").value.trim();
       const message = document.getElementById("msgInput").value.trim();
 
-      if (!from || !to || !message) {
-        alert("Все поля обязательны");
+      if (!isRegistered) {
+        alert("Сначала нажмите «Подключиться»");
+        return;
+      }
+
+      if (!to || !message) {
+        alert("Введите получателя и сообщение");
         return;
       }
 
