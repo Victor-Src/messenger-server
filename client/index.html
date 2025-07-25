@@ -30,7 +30,7 @@
       margin-top: 5px;
     }
 
-    #username {
+    #username, #recipient {
       width: 100px;
     }
 
@@ -45,23 +45,28 @@
   </style>
 </head>
 <body>
-  <h2>Простой WebSocket Мессенджер</h2>
+  <h2>Приватный WebSocket Чат</h2>
 
   <div>
-    <label>Имя: </label>
-    <input type="text" id="username" placeholder="Имя (обязательно)" />
+    <label>Ваше имя: </label>
+    <input type="text" id="username" placeholder="ваше имя" />
+  </div>
+
+  <div>
+    <label>Кому: </label>
+    <input type="text" id="recipient" placeholder="получатель" />
   </div>
 
   <ul id="chat"></ul>
 
-  <input id="msgInput" type="text" placeholder="Введите сообщение..." />
+  <input id="msgInput" type="text" placeholder="Сообщение..." />
   <button onclick="sendMessage()">Отправить</button>
 
   <script>
     const socket = new WebSocket("wss://messenger-server-l789.onrender.com");
 
     socket.addEventListener("open", () => {
-      console.log("Соединение установлено");
+      console.log("✅ Соединение установлено");
     });
 
     socket.addEventListener("message", async (event) => {
@@ -79,22 +84,26 @@
     function sendMessage() {
       const input = document.getElementById("msgInput");
       const username = document.getElementById("username").value.trim();
+      const recipient = document.getElementById("recipient").value.trim();
       const message = input.value.trim();
 
-      if (!username) {
-        alert("Пожалуйста, введите имя.");
+      if (!username || !recipient || !message) {
+        alert("Пожалуйста, заполните все поля");
         return;
       }
 
-      if (message === "") return;
+      const payload = {
+        from: username,
+        to: recipient,
+        message: message,
+      };
 
-      const fullMessage = `${username}: ${message}`;
-      socket.send(fullMessage);
+      socket.send(JSON.stringify(payload));
 
-      // Добавить своё сообщение в список
+      // Показать своё сообщение
       const chat = document.getElementById("chat");
       const li = document.createElement("li");
-      li.textContent = fullMessage;
+      li.textContent = `Вы → ${recipient}: ${message}`;
       li.classList.add("self");
       chat.appendChild(li);
 
