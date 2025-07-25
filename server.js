@@ -2,10 +2,11 @@ const WebSocket = require('ws');
 const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 3000;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // важно для Render, если нужно
+    rejectUnauthorized: false // важно для Render
   }
 });
 
@@ -24,38 +25,81 @@ console.log(`✅ WebSocket server running on ws://localhost:${PORT}`);
   `);
 })();
 
+let onlineUsers = new Set();
+
+function broadcastOnlineUsers() {
+  const users = Array.from(onlineUsers);
+  const data = JSON.stringify({ type: 'online-users', users });
+  server.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(data);
+    }
+  });
+}
+
 server.on('connection', (socket) => {
   console.log('🔌 New client connected');
 
-  // При подключении отправим все прошлые сообщения из базы
+  // При подключении отправим все прошлые сообщения
   (async () => {
     const res = await pool.query('SELECT username, message, created_at FROM messages ORDER BY created_at ASC');
-    res.rows.forEach(row => {
-      socket.send(`${row.username}: ${row.message}`);
-    });
+    for (const row of res.rows) {
+      socket.send(JSON.stringify({
+        type: 'message',
+        from: row.username,
+        message: row.message,
+        createdAt: row.created_at
+      }));
+    }
   })();
 
+  let currentUser = null;
+
   socket.on('message', async (msg) => {
-    console.log('📨 Received:', msg);
+    try {
+      const data = JSON.parse(msg);
 
-    // Сохраняем сообщение в базу
-    const [username, ...messageParts] = msg.split(': ');
-    const message = messageParts.join(': ');
-
-    await pool.query(
-      'INSERT INTO messages (username, message) VALUES ($1, $2)',
-      [username, message]
-    );
-
-    // Рассылаем всем клиентам, кроме отправителя
-    server.clients.forEach(client => {
-      if (client !== socket && client.readyState === WebSocket.OPEN) {
-        client.send(msg);
+      if (data.type === 'register') {
+        currentUser = data.from;
+        onlineUsers.add(currentUser);
+        broadcastOnlineUsers();
+        console.log(`👤 User registered: ${currentUser}`);
+        return;
       }
-    });
+
+      if (data.type === 'message') {
+        const { from, to, message } = data;
+
+        // Сохраняем в базу
+        await pool.query(
+          'INSERT INTO messages (username, message) VALUES ($1, $2)',
+          [from, message]
+        );
+
+        // Рассылаем всем клиентам, кроме отправителя
+        const outgoing = JSON.stringify({
+          type: 'message',
+          from,
+          to,
+          message
+        });
+
+        server.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(outgoing);
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Error parsing message:', e);
+    }
   });
 
   socket.on('close', () => {
-    console.log('❌ Client disconnected');
+    if (currentUser) {
+      onlineUsers.delete(currentUser);
+      broadcastOnlineUsers();
+      console.log(`❌ Client disconnected: ${currentUser}`);
+    }
   });
 });

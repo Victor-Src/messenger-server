@@ -9,7 +9,6 @@
       padding: 20px;
       background: #f0f0f0;
     }
-
     #chat {
       background: #fff;
       border: 1px solid #ccc;
@@ -19,37 +18,30 @@
       margin-bottom: 10px;
       list-style: none;
     }
-
     #chat li {
       margin-bottom: 5px;
     }
-
     #users {
       margin-top: 10px;
       padding: 10px;
       background: #e0ffe0;
       border: 1px solid #9ccc9c;
     }
-
     .self {
       color: green;
       font-weight: bold;
     }
-
     input, button {
       font-size: 16px;
       padding: 5px;
       margin-top: 5px;
     }
-
     #username, #recipient {
       width: 100px;
     }
-
     #msgInput {
       width: 60%;
     }
-
     #status {
       color: blue;
       margin-bottom: 10px;
@@ -92,12 +84,8 @@
     });
 
     socket.addEventListener("message", async (event) => {
-      let text;
+      let text = event.data;
       try {
-        text = typeof event.data === "string"
-          ? event.data
-          : await event.data.text();
-
         const parsed = JSON.parse(text);
 
         if (parsed.type === "online-users") {
@@ -106,14 +94,22 @@
             : "никого :(";
           return;
         }
-      } catch {
-        // not JSON
-        text = event.data;
-      }
 
-      const li = document.createElement("li");
-      li.textContent = text;
-      document.getElementById("chat").appendChild(li);
+        if (parsed.type === "message") {
+          const li = document.createElement("li");
+          li.textContent = `${parsed.from} → ${parsed.to || "всем"}: ${parsed.message}`;
+          if (parsed.from === currentUser) {
+            li.classList.add("self");
+          }
+          document.getElementById("chat").appendChild(li);
+          return;
+        }
+      } catch {
+        // Если не JSON, просто покажем
+        const li = document.createElement("li");
+        li.textContent = text;
+        document.getElementById("chat").appendChild(li);
+      }
     });
 
     function register() {
@@ -122,7 +118,6 @@
         alert("Введите ваше имя");
         return;
       }
-
       currentUser = username;
       socket.send(JSON.stringify({ type: "register", from: username }));
       isRegistered = true;
