@@ -2,18 +2,17 @@ const WebSocket = require('ws');
 const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 3000;
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false // важно для Render
-  }
+  ssl: { rejectUnauthorized: false }
 });
 
 const server = new WebSocket.Server({ port: PORT });
 console.log(`✅ WebSocket server running on ws://localhost:${PORT}`);
 
-// Инициализация таблицы сообщений
+const onlineUsers = new Map();
+
+// Создание таблицы при запуске
 (async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
@@ -25,11 +24,8 @@ console.log(`✅ WebSocket server running on ws://localhost:${PORT}`);
   `);
 })();
 
-let onlineUsers = new Set();
-
-function broadcastOnlineUsers() {
-  const users = Array.from(onlineUsers);
-  const data = JSON.stringify({ type: 'online-users', users });
+function broadcastToAll(obj) {
+  const data = JSON.stringify(obj);
   server.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(data);
@@ -38,68 +34,63 @@ function broadcastOnlineUsers() {
 }
 
 server.on('connection', (socket) => {
+  let currentUsername = null;
+
   console.log('🔌 New client connected');
 
-  // При подключении отправим все прошлые сообщения
-  (async () => {
-    const res = await pool.query('SELECT username, message, created_at FROM messages ORDER BY created_at ASC');
-    for (const row of res.rows) {
-      socket.send(JSON.stringify({
-        type: 'message',
-        from: row.username,
-        message: row.message,
-        createdAt: row.created_at
-      }));
-    }
-  })();
+  // Обработка входящих сообщений
+  socket.on('message', async (raw) => {
+    let data;
 
-  let currentUser = null;
-
-  socket.on('message', async (msg) => {
     try {
-      const data = JSON.parse(msg);
+      data = JSON.parse(raw);
+    } catch (err) {
+      return;
+    }
 
-      if (data.type === 'register') {
-        currentUser = data.from;
-        onlineUsers.add(currentUser);
-        broadcastOnlineUsers();
-        console.log(`👤 User registered: ${currentUser}`);
-        return;
-      }
+    if (data.type === 'register') {
+      currentUsername = data.from;
+      onlineUsers.set(socket, currentUsername);
 
-      if (data.type === 'message') {
-        const { from, to, message } = data;
+      // Отправка истории сообщений
+      const res = await pool.query(`
+        SELECT username, message FROM messages ORDER BY created_at ASC LIMIT 50
+      `);
+      socket.send(JSON.stringify({
+        type: 'history',
+        messages: res.rows
+      }));
 
-        // Сохраняем в базу
-        await pool.query(
-          'INSERT INTO messages (username, message) VALUES ($1, $2)',
-          [from, message]
-        );
+      // Обновить список онлайн
+      broadcastToAll({
+        type: 'online-users',
+        users: Array.from(onlineUsers.values())
+      });
+    }
 
-        // Рассылаем всем клиентам, кроме отправителя
-        const outgoing = JSON.stringify({
-          type: 'message',
-          from,
-          to,
-          message
-        });
+    if (data.type === 'message') {
+      const { from, to, message } = data;
+      const formatted = `${from} → ${to}: ${message}`;
 
-        server.clients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(outgoing);
-          }
-        });
-      }
-    } catch (e) {
-      console.error('Error parsing message:', e);
+      // Сохраняем в БД
+      await pool.query(
+        'INSERT INTO messages (username, message) VALUES ($1, $2)',
+        [from, formatted]
+      );
+
+      // Отправить всем
+      broadcastToAll({ type: 'message', text: formatted });
     }
   });
 
   socket.on('close', () => {
-    if (currentUser) {
-      onlineUsers.delete(currentUser);
-      broadcastOnlineUsers();
-      console.log(`❌ Client disconnected: ${currentUser}`);
+    if (currentUsername) {
+      onlineUsers.delete(socket);
+
+      broadcastToAll({
+        type: 'online-users',
+        users: Array.from(onlineUsers.values())
+      });
     }
   });
 });
