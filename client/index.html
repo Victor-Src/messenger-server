@@ -11,116 +11,179 @@
 
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #e0eafc, #cfdef3);
+      font-family: "Segoe UI", sans-serif;
+      background: #f4f6f9;
+      height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
     }
 
-    .card {
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-      max-width: 500px;
-      width: 100%;
+    .container {
       display: flex;
-      flex-direction: column;
-      gap: 15px;
+      width: 90%;
+      max-width: 900px;
+      height: 600px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
     }
 
-    h2 {
-      text-align: center;
+    /* Список пользователей */
+    .sidebar {
+      width: 200px;
+      background: #f0f4f8;
+      padding: 20px;
+      border-right: 1px solid #ddd;
+    }
+
+    .sidebar h3 {
       margin-top: 0;
+      font-size: 16px;
       color: #333;
     }
 
-    input, button {
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      outline: none;
+    #userList {
+      font-size: 14px;
+      color: #444;
     }
 
-    button {
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      transition: background-color 0.3s;
-      cursor: pointer;
+    /* Основная часть */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
     }
 
-    button:hover {
-      background-color: #45a049;
+    .chat-header {
+      margin-bottom: 10px;
+      color: #444;
+      font-size: 15px;
     }
 
     #chat {
-      height: 200px;
+      flex: 1;
       overflow-y: auto;
-      background: #f9f9f9;
-      border: 1px solid #ddd;
-      border-radius: 8px;
+      border: 1px solid #eee;
       padding: 10px;
-      list-style: none;
+      background: #fdfdfd;
+      border-radius: 8px;
     }
 
     #chat li {
-      margin-bottom: 6px;
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      background: #e9f0ff;
+      border-radius: 12px;
+      max-width: 70%;
+      word-wrap: break-word;
     }
 
-    .self {
+    #chat li.self {
+      background: #d1f5d3;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .input-area {
+      display: flex;
+      margin-top: 15px;
+      gap: 10px;
+    }
+
+    .input-area input {
+      padding: 10px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      flex: 1;
+    }
+
+    .input-area button {
+      padding: 10px 16px;
+      background: #4caf50;
+      border: none;
+      color: white;
       font-weight: bold;
-      color: green;
+      border-radius: 8px;
+      cursor: pointer;
     }
 
-    #status {
-      color: #007bff;
-      font-size: 14px;
+    .input-area button:hover {
+      background: #43a047;
     }
 
     .hidden {
       display: none;
     }
 
-    #users {
-      background: #f0fff0;
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 14px;
-      border: 1px solid #d0e0d0;
+    #recipient {
+      width: 100%;
+      margin-bottom: 10px;
     }
 
-    @media (max-width: 600px) {
-      .card {
-        padding: 20px;
-      }
+    /* Экран входа */
+    .login-screen {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
 
-      input, button {
-        font-size: 14px;
-      }
+    .login-screen input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .login-screen button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .login-screen button:hover {
+      background: #1565c0;
     }
   </style>
 </head>
 <body>
-  <div class="card" id="loginDiv">
+  <!-- Экран входа -->
+  <div class="login-screen" id="loginDiv">
     <h2>Вход в чат</h2>
     <input type="text" id="username" placeholder="Ваше имя" />
     <button onclick="register()">Войти</button>
   </div>
 
-  <div class="card hidden" id="chatDiv">
-    <h2>Приватный Чат</h2>
-    <div id="status">🕓 Не подключено</div>
-    <div id="users"><strong>Онлайн:</strong> <span id="userList">никого :(</span></div>
-
-    <input type="text" id="recipient" placeholder="Кому (имя)" />
-    <ul id="chat"></ul>
-
-    <input id="msgInput" type="text" placeholder="Введите сообщение..." />
-    <button onclick="sendMessage()">Отправить</button>
+  <!-- Чат -->
+  <div class="container hidden" id="chatDiv">
+    <div class="sidebar">
+      <h3>Онлайн</h3>
+      <div id="userList">никого :(</div>
+    </div>
+    <div class="chat-area">
+      <div class="chat-header" id="status">🕓 Не подключено</div>
+      <input type="text" id="recipient" placeholder="Кому (имя)" />
+      <ul id="chat"></ul>
+      <div class="input-area">
+        <input id="msgInput" type="text" placeholder="Введите сообщение..." />
+        <button onclick="sendMessage()">Отправить</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -146,7 +209,7 @@
 
         if (parsed.type === "online-users") {
           document.getElementById("userList").textContent = parsed.users.length
-            ? parsed.users.join(", ")
+            ? parsed.users.join("\n")
             : "никого :(";
           return;
         }
@@ -156,6 +219,7 @@
 
       const li = document.createElement("li");
       li.textContent = text;
+      if (text.startsWith("Вы →")) li.classList.add("self");
       document.getElementById("chat").appendChild(li);
     });
 
