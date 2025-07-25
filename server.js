@@ -5,46 +5,68 @@ const server = new WebSocket.Server({ port: PORT });
 
 console.log(`✅ WebSocket server is running on port ${PORT}`);
 
-const clients = new Map(); // username → socket
+const clients = new Map(); // username -> socket
+
+function broadcastOnlineUsers() {
+  const userList = Array.from(clients.keys());
+
+  const payload = JSON.stringify({
+    type: 'online-users',
+    users: userList
+  });
+
+  for (const socket of clients.values()) {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(payload);
+    }
+  }
+}
 
 server.on('connection', (socket) => {
-  console.log('🔌 New client connected');
+  let currentUsername = null;
 
   socket.on('message', (data) => {
     let payload;
     try {
       payload = JSON.parse(data);
     } catch (e) {
-      socket.send('❌ Неверный формат сообщения');
+      socket.send('❌ Invalid message format');
       return;
     }
 
-    const { from, to, message } = payload;
+    const { type, from, to, message } = payload;
 
-    if (!from || !to || !message) {
-      socket.send('❌ Все поля обязательны');
+    if (type === 'register') {
+      if (!from) {
+        socket.send('❌ Missing username');
+        return;
+      }
+
+      currentUsername = from;
+      clients.set(from, socket);
+      broadcastOnlineUsers();
       return;
     }
 
-    // Сохраняем клиента
-    clients.set(from, socket);
+    if (type === 'message') {
+      if (!from || !to || !message) {
+        socket.send('❌ Missing message fields');
+        return;
+      }
 
-    const recipientSocket = clients.get(to);
-    if (recipientSocket && recipientSocket.readyState === WebSocket.OPEN) {
-      recipientSocket.send(`${from} → вы: ${message}`);
-    } else {
-      socket.send(`⚠️ Пользователь "${to}" не в сети`);
+      const recipientSocket = clients.get(to);
+      if (recipientSocket && recipientSocket.readyState === WebSocket.OPEN) {
+        recipientSocket.send(`${from} → вы: ${message}`);
+      } else {
+        socket.send(`⚠️ Пользователь "${to}" не в сети`);
+      }
     }
   });
 
   socket.on('close', () => {
-    console.log('❌ Client disconnected');
-    // Удалим клиента, если его socket совпадает
-    for (const [name, sock] of clients.entries()) {
-      if (sock === socket) {
-        clients.delete(name);
-        break;
-      }
+    if (currentUsername) {
+      clients.delete(currentUsername);
+      broadcastOnlineUsers();
     }
   });
 });

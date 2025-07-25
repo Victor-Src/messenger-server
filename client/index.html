@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Messenger Client</title>
+  <title>Приватный Чат</title>
   <style>
     body {
       font-family: sans-serif;
@@ -24,6 +24,18 @@
       margin-bottom: 5px;
     }
 
+    #users {
+      margin-top: 10px;
+      padding: 10px;
+      background: #e0ffe0;
+      border: 1px solid #9ccc9c;
+    }
+
+    .self {
+      color: green;
+      font-weight: bold;
+    }
+
     input, button {
       font-size: 16px;
       padding: 5px;
@@ -37,20 +49,18 @@
     #msgInput {
       width: 60%;
     }
-
-    .self {
-      color: green;
-      font-weight: bold;
-    }
   </style>
 </head>
 <body>
-  <h2>Приватный WebSocket Чат</h2>
+  <h2>Приватный Чат с Онлайн-Юзерами</h2>
 
   <div>
     <label>Ваше имя: </label>
     <input type="text" id="username" placeholder="ваше имя" />
+    <button onclick="register()">Подключиться</button>
   </div>
+
+  <div id="users"><strong>Онлайн:</strong> <span id="userList">никого :(</span></div>
 
   <div>
     <label>Кому: </label>
@@ -66,48 +76,58 @@
     const socket = new WebSocket("wss://messenger-server-l789.onrender.com");
 
     socket.addEventListener("open", () => {
-      console.log("✅ Соединение установлено");
+      console.log("✅ Connected");
     });
 
     socket.addEventListener("message", async (event) => {
-      const chat = document.getElementById("chat");
+      let text;
+      try {
+        text = typeof event.data === "string"
+          ? event.data
+          : await event.data.text();
+        const parsed = JSON.parse(text);
+
+        if (parsed.type === "online-users") {
+          document.getElementById("userList").textContent = parsed.users.join(", ") || "никого :(";
+          return;
+        }
+      } catch {
+        // not JSON
+      }
+
       const li = document.createElement("li");
-
-      const text = typeof event.data === "string"
-        ? event.data
-        : await event.data.text();
-
       li.textContent = text;
-      chat.appendChild(li);
+      document.getElementById("chat").appendChild(li);
     });
 
-    function sendMessage() {
-      const input = document.getElementById("msgInput");
+    function register() {
       const username = document.getElementById("username").value.trim();
-      const recipient = document.getElementById("recipient").value.trim();
-      const message = input.value.trim();
-
-      if (!username || !recipient || !message) {
-        alert("Пожалуйста, заполните все поля");
+      if (!username) {
+        alert("Введите имя");
         return;
       }
 
-      const payload = {
-        from: username,
-        to: recipient,
-        message: message,
-      };
+      socket.send(JSON.stringify({ type: "register", from: username }));
+    }
 
-      socket.send(JSON.stringify(payload));
+    function sendMessage() {
+      const from = document.getElementById("username").value.trim();
+      const to = document.getElementById("recipient").value.trim();
+      const message = document.getElementById("msgInput").value.trim();
 
-      // Показать своё сообщение
-      const chat = document.getElementById("chat");
+      if (!from || !to || !message) {
+        alert("Все поля обязательны");
+        return;
+      }
+
+      socket.send(JSON.stringify({ type: "message", from, to, message }));
+
       const li = document.createElement("li");
-      li.textContent = `Вы → ${recipient}: ${message}`;
+      li.textContent = `Вы → ${to}: ${message}`;
       li.classList.add("self");
-      chat.appendChild(li);
+      document.getElementById("chat").appendChild(li);
 
-      input.value = "";
+      document.getElementById("msgInput").value = "";
     }
   </script>
 </body>
