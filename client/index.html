@@ -58,10 +58,6 @@
       cursor: pointer;
     }
 
-    .login-screen button:hover {
-      background: #3086ff;
-    }
-
     .chat-wrapper {
       display: flex;
       width: 95%;
@@ -71,6 +67,7 @@
       overflow: hidden;
       background: var(--bg-light);
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+      position: relative;
     }
 
     .sidebar {
@@ -79,6 +76,7 @@
       padding: 20px;
       border-right: 1px solid var(--border);
       overflow-y: auto;
+      transition: transform 0.3s ease;
     }
 
     .sidebar h3 {
@@ -110,6 +108,7 @@
       display: flex;
       flex-direction: column;
       padding: 20px;
+      position: relative;
     }
 
     #status {
@@ -142,12 +141,6 @@
       color: white;
     }
 
-    .message.meta {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
     .input-area {
       display: flex;
       gap: 10px;
@@ -174,32 +167,84 @@
       font-weight: bold;
     }
 
+    .mobile-header {
+      display: none;
+    }
+
     .hidden {
       display: none;
     }
 
     @media (max-width: 700px) {
       .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        background: #1a1a2a;
+        z-index: 10;
+        transform: translateX(-100%);
+      }
+
+      .sidebar.visible {
+        transform: translateX(0);
+      }
+
+      .mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1a1a2a;
+        padding: 10px 15px;
+        font-size: 14px;
+      }
+
+      .mobile-header button {
+        padding: 8px 12px;
+        background: var(--accent);
+        border: none;
+        border-radius: 6px;
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+      }
+    }
+
+    @media (min-width: 701px) {
+      .mobile-header {
         display: none;
+      }
+
+      .sidebar {
+        transform: translateX(0) !important;
+        position: static;
+        width: 250px;
       }
     }
   </style>
 </head>
 <body>
-  <!-- Экран входа -->
+  <!-- Вход -->
   <div class="login-screen" id="loginDiv">
     <h2>Приватный чат</h2>
     <input type="text" id="username" placeholder="Ваше имя" />
     <button onclick="register()">Войти</button>
   </div>
 
-  <!-- Чат -->
+  <!-- Основной чат -->
   <div class="chat-wrapper hidden" id="chatDiv">
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
       <h3>Онлайн</h3>
       <div id="userList"></div>
     </div>
+
     <div class="chat-area">
+      <div class="mobile-header">
+        <button onclick="toggleUserList()">Собеседник</button>
+        <span id="currentRecipientLabel">Никто не выбран</span>
+      </div>
+
       <div id="status">🕓 Не подключено</div>
       <div id="chat"></div>
       <div class="input-area">
@@ -218,6 +263,10 @@
     const chatEl = document.getElementById("chat");
     const userListEl = document.getElementById("userList");
     const statusEl = document.getElementById("status");
+    const recipientLabel = document.getElementById("currentRecipientLabel");
+    const sidebar = document.getElementById("sidebar");
+
+    const isMobile = window.innerWidth <= 700;
 
     socket.addEventListener("open", () => {
       statusEl.textContent = "🟢 Подключено";
@@ -260,9 +309,15 @@
           currentRecipient = user;
           document.querySelectorAll(".user").forEach(u => u.classList.remove("active"));
           div.classList.add("active");
+          if (recipientLabel) recipientLabel.textContent = `Собеседник: ${user}`;
+          if (isMobile) sidebar.classList.remove("visible");
         };
         userListEl.appendChild(div);
       });
+    }
+
+    function toggleUserList() {
+      sidebar.classList.toggle("visible");
     }
 
     function register() {
