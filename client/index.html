@@ -114,8 +114,8 @@
 
     #status {
       font-size: 13px;
-      margin-bottom: 12px;
       color: var(--text-muted);
+      margin: 12px 0 16px;
     }
 
     #chat {
@@ -214,11 +214,13 @@
         justify-content: space-between;
         align-items: center;
         background: #1a1a2a;
-        padding: 14px 16px;
+        padding: 16px;
         font-size: 15px;
         position: sticky;
         top: 0;
-        z-index: 5;
+        z-index: 10;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
       }
 
       .mobile-header button {
@@ -246,14 +248,12 @@
   </style>
 </head>
 <body>
-  <!-- Вход -->
   <div class="login-screen" id="loginDiv">
     <h2>Приватный чат</h2>
     <input type="text" id="username" placeholder="Ваше имя" />
     <button onclick="register()">Войти</button>
   </div>
 
-  <!-- Основной чат -->
   <div class="chat-wrapper hidden" id="chatDiv">
     <div class="sidebar" id="sidebar">
       <button class="sidebar-close" onclick="toggleUserList()">✖ Закрыть</button>
